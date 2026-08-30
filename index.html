@@ -1,0 +1,849 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Cola Bomb — pull the safe bottles out of the crate and leave the shaken ones alone.">
+<title>Cola Bomb</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=Barlow+Semi+Condensed:wght@400;500;600;700&family=DM+Mono:wght@500&display=swap">
+<style>
+/* ---------- reset ---------- */
+*,*::before,*::after{box-sizing:border-box}
+[hidden]{display:none !important}
+body,h1,h2,p,ul,figure{margin:0}
+button{font:inherit;color:inherit;background:none;border:0}
+
+/* ---------- tokens: one committed world, a soda cabinet at night ---------- */
+:root{
+  --glass:#0A1410;
+  --glass-2:#0E1B15;
+  --crate:#152720;
+  --crate-2:#1D342A;
+  --slot:#08110D;
+  --line:#2C4A3C;
+  --foam:#F5EDDD;
+  --muted:#8FA79A;
+  --cola-1:#8A3A16;
+  --cola-2:#4A1E0B;
+  --cap:#E0392B;
+  --cap-dark:#8E2119;
+  --gold:#EFB93F;
+  --lime:#9FCB3B;
+
+  --f-display:"Bungee","Arial Black",system-ui,sans-serif;
+  --f-ui:"Barlow Semi Condensed","Helvetica Neue",Arial,sans-serif;
+  --f-data:"DM Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+
+/* ---------- page ---------- */
+body{
+  min-height:100vh;
+  font-family:var(--f-ui);
+  color:var(--foam);
+  background:
+    radial-gradient(120% 80% at 50% -10%, #1A3227 0%, transparent 60%),
+    radial-gradient(90% 60% at 50% 110%, #17110A 0%, transparent 55%),
+    var(--glass);
+  display:flex;
+  justify-content:center;
+  padding:clamp(14px,3vw,32px) 16px 32px;
+}
+.cabinet{width:100%;max-width:600px;display:flex;flex-direction:column;gap:18px}
+.shaking{animation:cab-shake .42s cubic-bezier(.36,.07,.19,.97)}
+@keyframes cab-shake{
+  10%,90%{transform:translate(-2px,1px) rotate(-.3deg)}
+  30%,70%{transform:translate(4px,-2px) rotate(.4deg)}
+  50%{transform:translate(-5px,2px) rotate(-.5deg)}
+}
+
+/* ---------- sign ---------- */
+.sign{text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+.eyebrow{
+  font-size:11px;font-weight:600;letter-spacing:.24em;text-transform:uppercase;
+  color:var(--muted);
+}
+.wordmark{
+  font-family:var(--f-display);
+  font-size:clamp(38px,10vw,68px);
+  line-height:.94;
+  letter-spacing:.01em;
+  text-wrap:balance;
+  color:var(--foam);
+  text-shadow:0 2px 0 #0006, 0 0 26px #EFB93F22;
+}
+.wordmark em{font-style:normal;color:var(--cap);text-shadow:0 2px 0 #0006,0 0 30px #E0392B55}
+.wordmark .cap-dot{
+  display:inline-block;width:.34em;height:.34em;margin:0 .06em .12em;
+  border-radius:50%;
+  background:radial-gradient(circle at 34% 30%, #FF7A5C, var(--cap) 55%, var(--cap-dark));
+  box-shadow:0 0 0 .05em #0004, 0 0 18px #E0392B66;
+}
+
+/* ---------- hud ---------- */
+.hud{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  background:linear-gradient(180deg,var(--crate-2),var(--crate));
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:12px 14px;
+  box-shadow:inset 0 1px 0 #ffffff10, 0 8px 24px #0006;
+}
+.stat{display:flex;flex-direction:column;gap:4px;align-items:center;text-align:center}
+.stat + .stat{border-left:1px solid #ffffff12}
+.stat-label{font-size:10px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+.stat-value{font-family:var(--f-data);font-size:22px;font-variant-numeric:tabular-nums;color:var(--gold)}
+.stat-value.plain{color:var(--foam)}
+
+.lives{display:flex;gap:6px;height:26px;align-items:center;justify-content:center}
+.life{
+  width:18px;height:18px;border-radius:50%;
+  background:radial-gradient(circle at 34% 30%, #FF7A5C, var(--cap) 55%, var(--cap-dark));
+  box-shadow:inset 0 0 0 2px #00000030, 0 0 12px #E0392B44;
+  transition:opacity .25s, transform .25s, filter .25s;
+}
+.life.spent{opacity:.22;filter:grayscale(1);transform:scale(.8)}
+
+/* ---------- meter row ---------- */
+.meter-row{display:flex;flex-direction:column;gap:6px}
+.meter-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.meter-head span{font-size:11px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.meter-head b{font-family:var(--f-data);font-weight:500;color:var(--foam);font-variant-numeric:tabular-nums}
+.meter{
+  position:relative;height:10px;border-radius:3px;overflow:hidden;
+  background:var(--slot);border:1px solid var(--line);
+}
+.meter-fill{
+  height:100%;width:100%;transform-origin:left center;
+  background:linear-gradient(90deg,var(--cola-2),var(--cola-1) 40%,var(--gold));
+  box-shadow:0 0 14px #EFB93F55;
+}
+.meter.low .meter-fill{background:linear-gradient(90deg,var(--cap-dark),var(--cap));box-shadow:0 0 14px #E0392B66}
+
+/* ---------- crate ---------- */
+.crate-wrap{position:relative;display:flex;justify-content:center}
+.crate{
+  /* the board sizes itself from the space actually available, so all 25 slots stay on screen */
+  --cell:clamp(40px, min(calc((100vw - 90px) / 5), calc((100svh - 470px) / 5)), 104px);
+  display:grid;grid-template-columns:repeat(5,var(--cell));justify-content:center;gap:8px;
+  width:fit-content;margin-inline:auto;
+  padding:12px;
+  background:
+    linear-gradient(180deg,var(--crate-2),var(--crate));
+  border:1px solid var(--line);
+  border-radius:10px;
+  box-shadow:inset 0 1px 0 #ffffff12, inset 0 -18px 30px #00000055, 0 14px 34px #0007;
+}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;border-radius:10px;z-index:2}
+
+.bottle{
+  position:relative;
+  width:var(--cell);height:var(--cell);
+  display:grid;place-items:center;
+  padding:6px 2px;
+  border-radius:5px;
+  background:linear-gradient(180deg,#0C1712,var(--slot));
+  box-shadow:inset 0 2px 6px #000000aa, inset 0 -1px 0 #ffffff0d;
+  cursor:pointer;
+  transition:transform .12s ease, box-shadow .18s ease, background .3s ease;
+}
+.bottle:hover:not(:disabled){transform:translateY(-3px);box-shadow:inset 0 2px 6px #000a, 0 6px 14px #0007}
+.bottle:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.bottle:disabled{cursor:default}
+.bottle svg{position:absolute;top:7px;left:3px;width:calc(100% - 6px);height:calc(100% - 14px);overflow:visible}
+
+.b-liquid{transition:transform .55s cubic-bezier(.4,0,.2,1)}
+.b-cap{transition:transform .45s cubic-bezier(.2,-.6,.4,1.6), opacity .45s}
+.b-body{fill:#ffffff0a;stroke:#ffffff2e;stroke-width:1.4}
+.b-shine{fill:#ffffff26}
+
+/* opened: safe — bottle drained, gold ring */
+.bottle.safe{background:linear-gradient(180deg,#1A2B18,#0C1A11);box-shadow:inset 0 0 0 1px #EFB93F55, 0 0 22px #EFB93F22}
+.bottle.safe .b-liquid{transform:translateY(74px)}
+.bottle.safe .b-cap{transform:translate(6px,-26px) rotate(38deg);opacity:0}
+.bottle.safe .b-body{stroke:#EFB93F88}
+
+/* opened: bomb */
+.bottle.bomb{background:linear-gradient(180deg,#3A140F,#160705);box-shadow:inset 0 0 0 1px #E0392B88, 0 0 26px #E0392B44}
+.bottle.bomb .b-liquid{transform:translateY(-6px)}
+.bottle.bomb .b-cap{transform:translate(10px,-34px) rotate(58deg);opacity:0}
+.bottle.bomb .b-body{stroke:#E0392Baa}
+.bottle.bomb .b-fizz{opacity:1}
+.b-fizz{opacity:0;transition:opacity .2s}
+
+/* shaken markers */
+.mark{
+  position:absolute;inset:auto 2px 2px auto;
+  font-family:var(--f-ui);font-size:9px;font-weight:700;letter-spacing:.06em;
+  padding:0 4px;border-radius:3px;text-transform:uppercase;
+}
+.mark.ok{background:var(--lime);color:#10200A}
+.mark.bad{background:repeating-linear-gradient(45deg,var(--cap) 0 5px,#2A0A07 5px 10px);color:var(--foam)}
+.bottle.flagged{opacity:.72;background:linear-gradient(180deg,#2A100C,#0C0705)}
+.bottle.peeked-safe{box-shadow:inset 0 0 0 1px #9FCB3B66, inset 0 2px 6px #000a}
+
+.bubble{opacity:0}
+.bottle.safe .bubble{animation:rise .9s ease-out forwards}
+.bottle.safe .bubble:nth-of-type(2){animation-delay:.12s}
+.bottle.safe .bubble:nth-of-type(3){animation-delay:.24s}
+@keyframes rise{
+  0%{opacity:0;transform:translateY(0)}
+  25%{opacity:.85}
+  100%{opacity:0;transform:translateY(-42px)}
+}
+
+/* ---------- ticker ---------- */
+.ticker{
+  min-height:24px;text-align:center;
+  font-size:14px;letter-spacing:.06em;color:var(--muted);
+}
+.ticker b{color:var(--gold);font-weight:600}
+.ticker.warn b{color:var(--cap)}
+
+.controls{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{
+  font-family:var(--f-ui);font-size:13px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;
+  padding:9px 16px;border-radius:5px;
+  border:1px solid var(--line);
+  background:linear-gradient(180deg,var(--crate-2),var(--crate));
+  color:var(--foam);cursor:pointer;
+  transition:border-color .2s, transform .12s, background .2s;
+}
+.btn:hover{border-color:var(--gold);transform:translateY(-1px)}
+.btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.btn.primary{background:linear-gradient(180deg,#F0C455,var(--gold));color:#22160A;border-color:#00000030}
+.btn.primary:hover{background:linear-gradient(180deg,#FFD877,#F5C64A)}
+.btn[aria-pressed="true"]{border-color:var(--gold);color:var(--gold)}
+
+.legend{
+  display:flex;gap:18px;justify-content:center;flex-wrap:wrap;
+  font-size:12px;color:var(--muted);letter-spacing:.04em;
+}
+.legend kbd{
+  font-family:var(--f-data);font-size:11px;
+  background:var(--slot);border:1px solid var(--line);border-bottom-width:2px;
+  border-radius:4px;padding:1px 6px;color:var(--foam);
+}
+
+/* ---------- overlay ---------- */
+.overlay{
+  position:fixed;inset:0;z-index:20;
+  display:grid;place-items:center;padding:20px;
+  background:#050A08d9;
+  backdrop-filter:blur(3px);
+}
+.card{
+  width:min(420px,100%);
+  display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;
+  padding:28px 24px;
+  border:1px solid var(--line);border-radius:10px;
+  background:linear-gradient(180deg,var(--crate-2),var(--glass-2));
+  box-shadow:0 24px 60px #000a;
+  animation:pop .28s cubic-bezier(.2,.9,.3,1.3);
+}
+@keyframes pop{from{transform:scale(.94);opacity:0}to{transform:scale(1);opacity:1}}
+.card h2{font-family:var(--f-display);font-size:30px;line-height:1.05;text-wrap:balance}
+.card h2.good{color:var(--gold)}
+.card h2.bad{color:var(--cap)}
+.card p{font-size:15px;color:var(--muted);max-width:34ch;line-height:1.5}
+.tally{display:flex;gap:22px;justify-content:center;font-family:var(--f-data);font-variant-numeric:tabular-nums}
+.tally div{display:flex;flex-direction:column;gap:2px}
+.tally span{font-family:var(--f-ui);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+.tally b{font-size:22px;font-weight:500;color:var(--foam)}
+
+/* the shortcut legend is keyboard-only advice */
+@media (hover:none){.legend{display:none}}
+@media (max-height:760px){
+  .cabinet{gap:12px}
+  .wordmark{font-size:clamp(30px,7vw,44px)}
+  .legend{display:none}
+}
+@media (max-width:420px){
+  .crate{gap:6px;padding:9px}
+  .hud{padding:10px}
+  .stat-value{font-size:19px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<!-- shared bottle geometry: one definition, referenced by every bottle -->
+<svg width="0" height="0" aria-hidden="true" style="position:absolute">
+  <defs>
+    <clipPath id="cb-clip">
+      <path d="M16 10 H28 V25 C28 31 38 33 38 45 V89 Q38 95 32 95 H12 Q6 95 6 89 V45 C6 33 16 31 16 25 Z"/>
+    </clipPath>
+    <linearGradient id="cb-cola" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#A2481C"/>
+      <stop offset="55%" stop-color="#6E2C11"/>
+      <stop offset="100%" stop-color="#3B1608"/>
+    </linearGradient>
+    <linearGradient id="cb-cap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FF6A50"/>
+      <stop offset="60%" stop-color="#E0392B"/>
+      <stop offset="100%" stop-color="#8E2119"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<main class="cabinet" id="cabinet">
+  <header class="sign">
+    <p class="eyebrow">Crate of 25 · handle with care</p>
+    <h1 class="wordmark">COLA<span class="cap-dot"></span><em>BOMB</em></h1>
+  </header>
+
+  <section class="hud" aria-label="Score panel">
+    <div class="stat">
+      <span class="stat-label">Bottles left</span>
+      <div class="lives" id="lives" aria-label="Bottles left"></div>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Score</span>
+      <span class="stat-value" id="score">0</span>
+    </div>
+    <div class="stat">
+      <span class="stat-label">Best</span>
+      <span class="stat-value plain" id="best">0</span>
+    </div>
+  </section>
+
+  <section class="meter-row" aria-label="Round status">
+    <div class="meter-head">
+      <span>Crate <b id="round">1</b> · pull <b id="target">5</b> · pulled <b id="pulled">0</b></span>
+      <span>Fizz <b id="clock">30</b>s</span>
+    </div>
+    <div class="meter" id="meter"><div class="meter-fill" id="meterFill"></div></div>
+  </section>
+
+  <div class="crate-wrap">
+    <div class="crate" id="crate" role="grid" aria-label="Cola crate"></div>
+    <canvas id="fx"></canvas>
+  </div>
+
+  <p class="ticker" id="ticker" role="status" aria-live="polite">Pull a bottle. <b>4</b> of them are shaken.</p>
+
+  <div class="controls">
+    <button class="btn" id="shakeBtn" type="button">Shake test · <span id="shakeCount">2</span></button>
+    <button class="btn" id="soundBtn" type="button" aria-pressed="true">Sound on</button>
+    <button class="btn" id="resetBtn" type="button">New game</button>
+  </div>
+
+  <p class="legend">
+    <span><kbd>←↑↓→</kbd> move</span>
+    <span><kbd>Enter</kbd> pull</span>
+    <span><kbd>S</kbd> shake test</span>
+  </p>
+</main>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="card" role="dialog" aria-modal="true" aria-labelledby="ovTitle">
+    <h2 id="ovTitle">Ready?</h2>
+    <p id="ovText"></p>
+    <div class="tally" id="ovTally"></div>
+    <button class="btn primary" id="ovBtn" type="button">Start</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const SIZE = 25, COLS = 5;
+  const $ = (id) => document.getElementById(id);
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- persistence: memory is the source of truth, storage is write-through ---------- */
+  const store = {
+    best: 0,
+    seed() {
+      try {
+        const raw = localStorage.getItem("colabomb.best");
+        if (raw !== null && Number.isFinite(+raw)) this.best = +raw;
+      } catch (e) { /* private mode: session-only best */ }
+    },
+    save() {
+      try { localStorage.setItem("colabomb.best", String(this.best)); }
+      catch (e) { /* keep playing; only persistence is lost */ }
+    }
+  };
+  store.seed();
+
+  /* ---------- sound ---------- */
+  const sound = {
+    on: true, ctx: null,
+    boot() {
+      if (this.ctx || !this.on) return;
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) this.ctx = new AC();
+    },
+    noise(dur) {
+      const ctx = this.ctx, n = Math.floor(ctx.sampleRate * dur);
+      const buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+      const src = ctx.createBufferSource(); src.buffer = buf; return src;
+    },
+    fizz() {
+      if (!this.on || !this.ctx) return;
+      const ctx = this.ctx, src = this.noise(.5), bp = ctx.createBiquadFilter(), g = ctx.createGain();
+      bp.type = "bandpass"; bp.frequency.value = 2600; bp.Q.value = .7;
+      g.gain.setValueAtTime(.16, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .5);
+      src.connect(bp).connect(g).connect(ctx.destination); src.start();
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = "triangle"; o.frequency.setValueAtTime(520, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + .1);
+      og.gain.setValueAtTime(.09, ctx.currentTime);
+      og.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .18);
+      o.connect(og).connect(ctx.destination); o.start(); o.stop(ctx.currentTime + .2);
+    },
+    boom() {
+      if (!this.on || !this.ctx) return;
+      const ctx = this.ctx, src = this.noise(1.1), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+      lp.type = "lowpass"; lp.frequency.setValueAtTime(1800, ctx.currentTime);
+      lp.frequency.exponentialRampToValueAtTime(160, ctx.currentTime + .9);
+      g.gain.setValueAtTime(.4, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + 1.1);
+      src.connect(lp).connect(g).connect(ctx.destination); src.start();
+      const o = ctx.createOscillator(), og = ctx.createGain();
+      o.type = "sine"; o.frequency.setValueAtTime(150, ctx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(38, ctx.currentTime + .55);
+      og.gain.setValueAtTime(.5, ctx.currentTime);
+      og.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .6);
+      o.connect(og).connect(ctx.destination); o.start(); o.stop(ctx.currentTime + .65);
+    },
+    tick(up) {
+      if (!this.on || !this.ctx) return;
+      const ctx = this.ctx, o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "square"; o.frequency.value = up ? 880 : 300;
+      g.gain.setValueAtTime(.05, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .12);
+      o.connect(g).connect(ctx.destination); o.start(); o.stop(ctx.currentTime + .13);
+    }
+  };
+
+  /* ---------- particles: wall-clock lifetimes, never frame counts ---------- */
+  const fx = $("fx"), fxc = fx.getContext("2d");
+  let bits = [], raf = 0, last = 0;
+
+  function sizeCanvas() {
+    const r = fx.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
+    fx.width = Math.round(r.width * dpr); fx.height = Math.round(r.height * dpr);
+    fxc.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  addEventListener("resize", sizeCanvas);
+
+  function spray(el, kind) {
+    if (reduceMotion) return;
+    const host = fx.getBoundingClientRect(), b = el.getBoundingClientRect();
+    const x = b.left - host.left + b.width / 2, y = b.top - host.top + b.height * .35;
+    const n = kind === "bomb" ? 46 : 16, now = performance.now();
+    for (let i = 0; i < n; i++) {
+      const a = kind === "bomb" ? Math.random() * Math.PI * 2 : -Math.PI / 2 + (Math.random() - .5) * 1.1;
+      const sp = kind === "bomb" ? 90 + Math.random() * 320 : 40 + Math.random() * 110;
+      bits.push({
+        x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+        r: kind === "bomb" ? 1.5 + Math.random() * 3.5 : 1 + Math.random() * 2,
+        die: now + (kind === "bomb" ? 700 + Math.random() * 700 : 500 + Math.random() * 400),
+        born: now, kind
+      });
+    }
+    if (!raf) { last = now; raf = requestAnimationFrame(step); }
+  }
+
+  function step(now) {
+    const dt = Math.min(64, now - last) / 1000; last = now;
+    fxc.clearRect(0, 0, fx.width, fx.height);
+    bits = bits.filter(p => p.die > now);
+    for (const p of bits) {
+      p.vy += (p.kind === "bomb" ? 620 : -60) * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt;
+      const t = 1 - (now - p.born) / (p.die - p.born);
+      fxc.globalAlpha = Math.max(0, t);
+      fxc.fillStyle = p.kind === "bomb"
+        ? (Math.random() < .3 ? "#EFB93F" : "#8A3A16")
+        : "#F5EDDD";
+      fxc.beginPath(); fxc.arc(p.x, p.y, p.r, 0, Math.PI * 2); fxc.fill();
+    }
+    fxc.globalAlpha = 1;
+    if (bits.length) raf = requestAnimationFrame(step);
+    else { raf = 0; fxc.clearRect(0, 0, fx.width, fx.height); }
+  }
+
+  /* ---------- game state ---------- */
+  const S = {
+    round: 1, score: 0, lives: 3, pulled: 0, streak: 0,
+    shakes: 2, bombs: [], opened: [], flags: [],
+    left: 0, tickFrom: 0, limit: 30, running: false, cursor: 0
+  };
+
+  const bombsFor = (r) => Math.min(3 + r, 12);
+  const targetFor = (r) => Math.min(4 + r, SIZE - bombsFor(r));
+  const secondsFor = (r) => Math.min(24 + r * 2, 46);
+
+  const crate = $("crate");
+  const cells = [];
+
+  function bottleSVG() {
+    return `<svg viewBox="0 0 44 100" aria-hidden="true">
+      <g clip-path="url(#cb-clip)">
+        <rect class="b-liquid" x="0" y="18" width="44" height="82" fill="url(#cb-cola)"/>
+      </g>
+      <g class="b-fizz" clip-path="url(#cb-clip)">
+        <circle cx="16" cy="40" r="2.4" fill="#F5EDDD" opacity=".7"/>
+        <circle cx="26" cy="52" r="3" fill="#F5EDDD" opacity=".5"/>
+        <circle cx="21" cy="66" r="2" fill="#F5EDDD" opacity=".6"/>
+      </g>
+      <path class="b-body" d="M16 10 H28 V25 C28 31 38 33 38 45 V89 Q38 95 32 95 H12 Q6 95 6 89 V45 C6 33 16 31 16 25 Z"/>
+      <rect class="b-shine" x="11" y="50" width="3.5" height="30" rx="1.75"/>
+      <circle class="bubble" cx="17" cy="60" r="2" fill="#F5EDDD"/>
+      <circle class="bubble" cx="25" cy="70" r="1.6" fill="#F5EDDD"/>
+      <circle class="bubble" cx="21" cy="80" r="2.4" fill="#F5EDDD"/>
+      <g class="b-cap">
+        <rect x="14" y="2" width="16" height="9" rx="2.5" fill="url(#cb-cap)"/>
+        <rect x="14" y="5" width="16" height="1.2" fill="#00000033"/>
+      </g>
+    </svg>`;
+  }
+
+  for (let i = 0; i < SIZE; i++) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "bottle";
+    b.dataset.i = String(i);
+    b.innerHTML = bottleSVG();
+    crate.appendChild(b);
+    cells.push(b);
+  }
+  sizeCanvas();
+
+  /* ---------- rendering ---------- */
+  function say(text, warn) {
+    const t = $("ticker");
+    t.innerHTML = text;
+    t.classList.toggle("warn", !!warn);
+  }
+
+  function paintHUD() {
+    $("score").textContent = S.score.toLocaleString("en-US");
+    $("best").textContent = store.best.toLocaleString("en-US");
+    $("round").textContent = S.round;
+    $("target").textContent = targetFor(S.round);
+    $("pulled").textContent = S.pulled;
+    $("shakeCount").textContent = S.shakes;
+    $("shakeBtn").disabled = S.shakes === 0 || !S.running;
+    const lives = $("lives");
+    lives.innerHTML = "";
+    for (let i = 0; i < 3; i++) {
+      const d = document.createElement("i");
+      d.className = "life" + (i < S.lives ? "" : " spent");
+      lives.appendChild(d);
+    }
+  }
+
+  const remaining = (now) => Math.max(0, S.left - (now - S.tickFrom));
+
+  function paintClock(now = performance.now()) {
+    const left = remaining(now);
+    $("clock").textContent = Math.ceil(left / 1000);
+    $("meterFill").style.transform = `scaleX(${left / (S.limit * 1000)})`;
+    $("meter").classList.toggle("low", left < 6000);
+  }
+
+  /* ---------- clock: wall-clock deadline, paused when the tab is away ---------- */
+  let clockRaf = 0;
+
+  // The round is timed off the wall clock, and the clock only runs while the tab
+  // is on screen — a backgrounded tab gets no frames, so counting them would
+  // either freeze the round or blow the whole hidden stretch at once on return.
+  function armClock(ms) {
+    S.left = ms; S.tickFrom = performance.now();
+    paintClock();
+    if (!document.hidden) runClock();
+  }
+
+  function runClock() {
+    cancelAnimationFrame(clockRaf);
+    const tickClock = (now) => {
+      if (!S.running || document.hidden) return;
+      paintClock(now);
+      if (remaining(now) <= 0) { bust(null, "time"); return; }
+      clockRaf = requestAnimationFrame(tickClock);
+    };
+    clockRaf = requestAnimationFrame(tickClock);
+  }
+
+  document.addEventListener("visibilitychange", () => {
+    const now = performance.now();
+    if (document.hidden) {
+      cancelAnimationFrame(clockRaf); clockRaf = 0;
+      S.left = remaining(now);
+      bits = []; cancelAnimationFrame(raf); raf = 0;
+      fxc.clearRect(0, 0, fx.width, fx.height);
+    } else {
+      S.tickFrom = now;
+      if (S.running) runClock();
+    }
+  });
+
+  /* ---------- round flow ---------- */
+  function startRound() {
+    const bombCount = bombsFor(S.round);
+    const order = [...Array(SIZE).keys()];
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    S.bombs = new Array(SIZE).fill(false);
+    order.slice(0, bombCount).forEach(i => S.bombs[i] = true);
+    S.opened = new Array(SIZE).fill(false);
+    S.flags = new Array(SIZE).fill(null);
+    S.pulled = 0; S.streak = 0; S.shakes = 2;
+    S.limit = secondsFor(S.round);
+    S.running = true;
+
+    cells.forEach(c => {
+      c.className = "bottle";
+      c.disabled = false;
+      c.style.opacity = "";
+      c.querySelectorAll(".mark").forEach(m => m.remove());
+      c.setAttribute("aria-label", `Bottle ${+c.dataset.i + 1}, still in the crate`);
+    });
+
+    paintHUD(); armClock(S.limit * 1000);
+    say(`Crate ${S.round}: <b>${bombCount}</b> bottles in here are shaken. Pull <b>${targetFor(S.round)}</b> good ones.`);
+    focusCell(S.cursor);
+  }
+
+  function focusCell(i) {
+    S.cursor = Math.max(0, Math.min(SIZE - 1, i));
+    cells[S.cursor].focus({ preventScroll: true });
+  }
+
+  // Opening or flagging a bottle disables it, which would drop keyboard focus to
+  // the body and strand the arrow keys — hand focus to the next live slot.
+  function focusNextLive(from) {
+    for (let d = 1; d <= SIZE; d++) {
+      const j = (from + d) % SIZE;
+      if (!cells[j].disabled) { focusCell(j); return; }
+    }
+  }
+
+  function open(i) {
+    if (!S.running || S.opened[i] || S.flags[i] === "bomb") return;
+    sound.boot();
+    S.opened[i] = true;
+    const el = cells[i];
+    el.disabled = true;
+
+    if (S.bombs[i]) { bust(i, "bomb"); return; }
+
+    el.classList.add("safe");
+    el.setAttribute("aria-label", `Bottle ${i + 1}, safe cola`);
+    spray(el, "safe"); sound.fizz();
+
+    S.pulled++;
+    S.streak++;
+    const mult = Math.min(S.streak, 5);
+    const gain = 10 * S.round * mult;
+    S.score += gain;
+    if (S.score > store.best) { store.best = S.score; store.save(); }
+    paintHUD();
+
+    const need = targetFor(S.round) - S.pulled;
+    if (need === 0) { clearRound(); return; }
+    say(`Good cola. <b>+${gain}</b>${mult > 1 ? ` (×${mult} streak)` : ""} · <b>${need}</b> to go.`);
+    focusNextLive(i);
+  }
+
+  function shake() {
+    if (!S.running || S.shakes === 0) return;
+    sound.boot();
+    const i = S.cursor;
+    if (S.opened[i] || S.flags[i]) { say("Already know that one. Move to a sealed bottle.", true); return; }
+    S.shakes--;
+    const el = cells[i];
+    const mark = document.createElement("span");
+    if (S.bombs[i]) {
+      S.flags[i] = "bomb";
+      el.classList.add("flagged");
+      el.disabled = true;
+      mark.className = "mark bad"; mark.textContent = "bomb";
+      el.setAttribute("aria-label", `Bottle ${i + 1}, shaken — do not pull`);
+      sound.tick(false);
+      say(`Hissing. Bottle <b>${i + 1}</b> is a bomb — leave it.`, true);
+    } else {
+      S.flags[i] = "safe";
+      el.classList.add("peeked-safe");
+      mark.className = "mark ok"; mark.textContent = "flat";
+      el.setAttribute("aria-label", `Bottle ${i + 1}, tested flat — safe to pull`);
+      sound.tick(true);
+      say(`Dead quiet. Bottle <b>${i + 1}</b> is safe.`);
+    }
+    el.appendChild(mark);
+    paintHUD();
+    if (el.disabled) focusNextLive(i); else focusCell(i);
+  }
+
+  function revealAll(hitIndex) {
+    cells.forEach((el, i) => {
+      el.disabled = true;
+      if (S.opened[i]) return;
+      if (S.bombs[i]) {
+        el.classList.remove("flagged", "peeked-safe");
+        el.classList.add("bomb");
+        if (i !== hitIndex) el.style.opacity = ".7";
+      }
+    });
+  }
+
+  function bust(i, cause) {
+    S.running = false;
+    cancelAnimationFrame(clockRaf);
+    S.lives--; S.streak = 0;
+
+    if (i != null) {
+      const el = cells[i];
+      el.classList.add("bomb");
+      el.setAttribute("aria-label", `Bottle ${i + 1}, shaken — it blew`);
+      spray(el, "bomb");
+    }
+    sound.boom();
+    if (!reduceMotion) {
+      const cab = $("cabinet");
+      cab.classList.remove("shaking"); void cab.offsetWidth; cab.classList.add("shaking");
+    }
+    revealAll(i);
+    paintHUD();
+    say(cause === "time"
+      ? "The crate went warm. Every bomb is showing now."
+      : `Bottle <b>${i + 1}</b> was a bomb. Every other one is showing now.`, true);
+
+    if (S.lives <= 0) { gameOver(cause); return; }
+
+    showCard({
+      title: cause === "time" ? "Time's up" : "It blew.",
+      bad: true,
+      text: cause === "time"
+        ? "The crate went warm before you finished. That costs a bottle."
+        : "Brown foam everywhere. That one had been rolling around in a hot truck all morning.",
+      tally: [["Score", S.score], ["Crate", S.round], ["Left", S.lives]],
+      btn: "Same crate again",
+      onGo: () => { hideCard(); startRound(); }
+    });
+  }
+
+  function clearRound() {
+    S.running = false;
+    cancelAnimationFrame(clockRaf);
+    const timeBonus = Math.floor(remaining(performance.now()) / 1000) * 5 * S.round;
+    const clearBonus = 100 * S.round;
+    S.score += timeBonus + clearBonus;
+    if (S.score > store.best) { store.best = S.score; store.save(); }
+    revealAll(null);
+    paintHUD();
+    say(`Crate cleared. <b>+${(clearBonus + timeBonus).toLocaleString("en-US")}</b> in bonuses.`);
+    showCard({
+      title: "Crate cleared",
+      good: true,
+      text: `Every bottle you pulled was drinkable. Crate ${S.round + 1} packs ${bombsFor(S.round + 1)} shaken bottles.`,
+      tally: [["Clear", clearBonus], ["Time", timeBonus], ["Score", S.score]],
+      btn: "Next crate",
+      onGo: () => { hideCard(); S.round++; startRound(); }
+    });
+  }
+
+  function gameOver() {
+    const isBest = S.score >= store.best && S.score > 0;
+    showCard({
+      title: "Crate's empty",
+      bad: true,
+      text: isBest
+        ? "New personal best. Nobody on this loading dock has a steadier hand."
+        : `You made it to crate ${S.round}. The bombs always win eventually.`,
+      tally: [["Score", S.score], ["Best", store.best], ["Crate", S.round]],
+      btn: "Play again",
+      onGo: () => { hideCard(); newGame(); }
+    });
+  }
+
+  /* ---------- overlay ---------- */
+  const overlay = $("overlay");
+  let cardAction = null;
+
+  function showCard({ title, text, tally = [], btn, onGo, good, bad }) {
+    $("ovTitle").textContent = title;
+    $("ovTitle").className = good ? "good" : bad ? "bad" : "";
+    $("ovText").textContent = text;
+    $("ovTally").innerHTML = tally.map(([k, v]) =>
+      `<div><span>${k}</span><b>${Number(v).toLocaleString("en-US")}</b></div>`).join("");
+    $("ovBtn").textContent = btn;
+    cardAction = onGo;
+    overlay.hidden = false;
+    $("ovBtn").focus({ preventScroll: true });
+  }
+  function hideCard() { overlay.hidden = true; cardAction = null; }
+
+  $("ovBtn").addEventListener("click", () => { sound.boot(); if (cardAction) cardAction(); });
+
+  /* ---------- input ---------- */
+  crate.addEventListener("click", (e) => {
+    const el = e.target.closest(".bottle");
+    if (!el) return;
+    S.cursor = +el.dataset.i;
+    open(S.cursor);
+  });
+
+  crate.addEventListener("focusin", (e) => {
+    const el = e.target.closest(".bottle");
+    if (el) S.cursor = +el.dataset.i;
+  });
+
+  // Arrow keys move; S shakes. Enter/Space stay with the button's own activation,
+  // so one press never both pulls a bottle and runs a second step.
+  crate.addEventListener("keydown", (e) => {
+    const moves = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -COLS, ArrowDown: COLS };
+    if (e.key in moves) {
+      e.preventDefault(); e.stopPropagation();
+      const next = S.cursor + moves[e.key];
+      if (next >= 0 && next < SIZE) focusCell(next);
+      return;
+    }
+    if (e.key === "s" || e.key === "S") {
+      e.preventDefault(); e.stopPropagation();
+      shake();
+    }
+  });
+
+  $("shakeBtn").addEventListener("click", () => shake());
+  $("resetBtn").addEventListener("click", () => { sound.boot(); newGame(); });
+  $("soundBtn").addEventListener("click", (e) => {
+    sound.on = !sound.on;
+    e.currentTarget.setAttribute("aria-pressed", String(sound.on));
+    e.currentTarget.textContent = sound.on ? "Sound on" : "Sound off";
+    if (sound.on) sound.boot();
+  });
+
+  /* ---------- boot ---------- */
+  function newGame() {
+    S.round = 1; S.score = 0; S.lives = 3; S.cursor = 0;
+    bits = []; fxc.clearRect(0, 0, fx.width, fx.height);
+    cells.forEach(c => c.style.opacity = "");
+    startRound();
+  }
+
+  paintHUD();
+  showCard({
+    title: "Cola Bomb",
+    text: "Twenty-five bottles in the crate. Some were shaken until they are ready to go off. Pull the good ones, leave the bombs, and beat the clock.",
+    tally: [["Crates", 1], ["Bottles", 3], ["Shake tests", 2]],
+    btn: "Open the crate",
+    onGo: () => { hideCard(); newGame(); }
+  });
+})();
+</script>
+</body>
+</html>
