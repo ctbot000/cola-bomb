@@ -1032,8 +1032,12 @@ body{
     $("ovTitle").textContent = title;
     $("ovTitle").className = good ? "good" : bad ? "bad" : "";
     $("ovText").innerHTML = text;
-    $("ovTally").innerHTML = tally.map(([k, v]) =>
-      `<div><span>${k}</span><b>${Number(v).toLocaleString("en-US")}</b></div>`).join("");
+    // A tally value is a score to group in thousands or a label like "5×5";
+    // forcing everything through Number() turns the labels into NaN.
+    $("ovTally").innerHTML = tally.map(([k, v]) => {
+      const shown = typeof v === "number" ? v.toLocaleString("en-US") : v;
+      return `<div><span>${k}</span><b>${shown}</b></div>`;
+    }).join("");
     $("ovBtn").textContent = btn;
     cardAction = onGo;
     overlay.hidden = false;
